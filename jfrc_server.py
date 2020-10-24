@@ -1,17 +1,20 @@
 #!/usr/bin/env python
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
+from time import sleep
+import serial
 
 HTTP_PORT = 8081
-SERIAL_PORT = "/dev/ttypACM0"
+SERIAL_PORT = "/dev/ttyACM0"
+SERIAL_BAUD = 19200
 
 state = {
 	"toggles" : {
 		"led0" : False
 	},
 	"pwms" : {
-		"pwm0" : 0.5,
-		"pwm1" : 0.5,
+		"a" : 127,
+		"b" : 127,
 	},
 }
 
@@ -83,7 +86,10 @@ class JFRCServer(BaseHTTPRequestHandler):
 
 			# Validate that all the keys are correct and values are floats
 			for key, value in post_json.items():
-				if type(value) != float:
+				if type(value) != int:
+					bad_request = True
+					break
+				if value not in range(256):
 					bad_request = True
 					break
 				if not key in state["pwms"]:
@@ -106,6 +112,7 @@ class JFRCServer(BaseHTTPRequestHandler):
 				self.end_headers()
 				self.wfile.write(json.dumps(state['pwms']).encode())
 
+
 def run(server_class=HTTPServer, handler_class=JFRCServer, port=8081):
 	server_address = ('', port)
 	httpd = server_class(server_address, handler_class)
@@ -115,10 +122,41 @@ def run(server_class=HTTPServer, handler_class=JFRCServer, port=8081):
 		pass
 	httpd.server_close()
 
+
+class SerialCommunicator:
+	STX = 2
+	ETX = 3
+	def __init__(self, port, baud, state):
+		self.serial = serial.Serial(port, baud, timeout=0)
+		self.arduino_thread = Thread(target = self.loop)
+		self.state = state
+		self.running = True
+
+	def start(self):
+		self.arduino_thread.start()
+
+	def loop(self):
+		while(self.running):
+			for key, val in state["pwms"].items():
+				self.serial.write(b"%c%c%c%c" % (self.STX, ord(key), int(val), self.ETX))
+			sleep(0.1)
+
+	def stop(self):
+		self.running = False
+		self.arduino_thread.join()
+		self.serial.close()
+
+
 if __name__ == '__main__':
 	from sys import argv
+	from threading import Thread
+	
+	sc = SerialCommunicator(port = SERIAL_PORT, baud = SERIAL_BAUD, state = state)
+	sc.start()
 
 	if len(argv) == 2:
 		run(port=int(argv[1]))
 	else:
 		run()
+
+	sc.stop()
