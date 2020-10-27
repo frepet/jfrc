@@ -6,7 +6,8 @@ import serial
 
 HTTP_PORT = 8081
 SERIAL_PORT = "/dev/ttyACM0"
-SERIAL_BAUD = 19200
+SERIAL_BAUD = 9600
+SERIAL_HZ = 50
 
 state = {
 	"toggles" : {
@@ -139,7 +140,7 @@ class SerialCommunicator:
 		while(self.running):
 			for key, val in state["pwms"].items():
 				self.serial.write(b"%c%c%c%c" % (self.STX, ord(key), int(val), self.ETX))
-			sleep(0.1)
+			sleep(1/SERIAL_HZ)
 
 	def stop(self):
 		self.running = False

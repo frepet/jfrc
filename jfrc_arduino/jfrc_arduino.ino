@@ -21,11 +21,11 @@ const int SERVO_START_PORT = 2; //This will correspond to the address 'a'
 const int SERVOS = 2;
 const int SERVO_MIN_MS = 1000;
 const int SERVO_MAX_MS = 2000;
-const int SERIAL_BAUD_RATE = 19200;
+const int SERIAL_BAUD_RATE = 115200;
 // End of configuration
 
-const int STX = 2;
-const int ETX = 3;
+const uint8_t STX = 2;
+const uint8_t ETX = 3;
 const int MSG_SIZE = 2;
 Servo servo[SERVOS];
 byte msg[MSG_SIZE];
@@ -55,7 +55,7 @@ void waitForMsg(){
   
   while(temp != STX){
     temp = Serial.read();
-    delay(1);
+    delay(10);
   }
 }
 
@@ -81,6 +81,7 @@ void readMsg(){
 void loop() {
   clearMsg();
   waitForMsg();
+  readMsg();
   servo[msg[0] - 'a'].writeMicroseconds(map(msg[1], 0, 255, SERVO_MIN_MS, SERVO_MAX_MS));
 }
 
