@@ -11,7 +11,7 @@ SERIAL_HZ = 50
 
 state = {
 	"toggles" : {
-		"led0" : False
+		"A" : False
 	},
 	"pwms" : {
 		"a" : 127,
@@ -138,6 +138,9 @@ class SerialCommunicator:
 		while(self.running):
 			for key, val in state["pwms"].items():
 				self.serial.write(b"%c%c%c%c" % (self.STX, ord(key), int(val), self.ETX))
+			for key, val in state["toggles"].items():
+				self.serial.write(b"%c%c%c%c" % (self.STX, ord(key), 1 if val else 0, self.ETX))
+				
 			sleep(1/SERIAL_HZ)
 
 	def stop(self):

@@ -17,11 +17,16 @@
 #include <Servo.h>
 
 // Configuration
-const int SERVO_START_PORT = 2; //This will correspond to the address 'a'
+const int SERVO_START_PIN = 2; //This will correspond to the address 'a'
 const int SERVOS = 2;
 const int SERVO_MIN_MS = 1000;
 const int SERVO_MAX_MS = 2000;
 const int SERIAL_BAUD_RATE = 115200;
+
+const int TOGGLES = 5;
+const int TOGGLES_START_PIN = 9;
+
+const int FAILSAFE_PIN = 13;
 // End of configuration
 
 const uint8_t STX = 2;
@@ -29,12 +34,27 @@ const uint8_t ETX = 3;
 const int MSG_SIZE = 2;
 Servo servo[SERVOS];
 byte msg[MSG_SIZE];
+unsigned long failsafe_timer;
 
 void setup() {
   for (int i = 0; i < SERVOS; i++) {
-    servo[i].attach(SERVO_START_PORT + i);
+    servo[i].attach(SERVO_START_PIN + i);
+  }
+  
+  for (int i = 0; i < TOGGLES; i++) {
+    pinMode(TOGGLES_START_PIN + i, OUTPUT);
+    digitalWrite(TOGGLES_START_PIN + i, HIGH);
+    delay(100);
   }
 
+  delay(100);
+  
+  for (int i = 0; i < TOGGLES; i++) {
+    digitalWrite(TOGGLES_START_PIN + i, LOW);
+  }
+  
+  digitalWrite(FAILSAFE_PIN, HIGH);
+  
   Serial.begin(SERIAL_BAUD_RATE);
 }
 
@@ -56,6 +76,7 @@ void waitForMsg(){
   while(temp != STX){
     temp = Serial.read();
     delay(10);
+    checkFailsafe();
   }
 }
 
@@ -71,6 +92,21 @@ void readMsg(){
 
   if(Serial.read() == ETX){
     memcpy(msg,temp,MSG_SIZE);
+    failsafe_timer = millis();
+  }
+}
+
+/*
+ * Checks if FAILSAFE_TIME amount of time have passed since last read
+ * if true, the failsafe will kick in.
+ */
+void checkFailsafe() {
+  unsigned long current_time = millis();
+  if (current_time - failsafe_timer > 1000) {
+    servo[1].writeMicroseconds(1500);
+    digitalWrite(FAILSAFE_PIN, HIGH);
+  } else {
+    digitalWrite(FAILSAFE_PIN, LOW); 
   }
 }
 
@@ -82,6 +118,13 @@ void loop() {
   clearMsg();
   waitForMsg();
   readMsg();
-  servo[msg[0] - 'a'].writeMicroseconds(map(msg[1], 0, 255, SERVO_MIN_MS, SERVO_MAX_MS));
+  if (msg[0] < 'a') {
+    uint8_t pin = msg[0] - 'A' + TOGGLES_START_PIN;
+    if (pin >= TOGGLES_START_PIN && pin <= TOGGLES_START_PIN + TOGGLES) {
+      digitalWrite(pin, msg[1] == 1 ? HIGH : LOW);
+    }
+  } else {
+    servo[msg[0] - 'a'].writeMicroseconds(map(msg[1], 0, 255, SERVO_MIN_MS, SERVO_MAX_MS));
+  }
 }
 
