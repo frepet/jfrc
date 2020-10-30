@@ -9,9 +9,11 @@ import requests
 
 from JFRCModel import JFRCModel
 
+SERVER_PORT = 65520
+
 
 class JFRCRobotConnection:
-	def __init__(self, model: JFRCModel, url="", port=8081):
+	def __init__(self, model: JFRCModel, url="", port=SERVER_PORT):
 		self.url = f"http://{url}:{port}"
 
 		try:
@@ -25,7 +27,10 @@ class JFRCRobotConnection:
 	def start(self):
 		while self.running:
 			self.model.tick()
-			requests.post(self.url + "/jfrc-pwms", json={'a': self.model.steering_value()})
+			requests.post(self.url + "/jfrc-pwms", json={
+				'a': self.model.steering_value(),
+				'b': self.model.throttle_value(),
+			})
 			sleep(0.02)
 
 	def stop(self):

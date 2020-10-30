@@ -13,11 +13,14 @@ from sys import argv
 from JFRCModel import JFRCModel
 from JFRCRobotConnection import JFRCRobotConnection
 
+CAMERA_PORT = 65521
 camera_size = (800, 600)
 keymap = {
 	"turn_left": Qt.Key_A,
 	"turn_right": Qt.Key_D,
 	"turn_center": Qt.Key_C,
+	"forward": Qt.Key_W,
+	"reverse": Qt.Key_S,
 }
 
 
@@ -58,17 +61,25 @@ class JFRCController(QWidget):
 		self.steering_indicator.setEnabled(False)
 		self.jfrc_model.steering_updated.connect(lambda val: self.steering_indicator.setValue(val))
 
+		# Add slider for throttle
+		self.throttle_indicator = QSlider(orientation=Qt.Vertical)
+		self.throttle_indicator.setRange(0, 255)
+		self.throttle_indicator.show()
+		self.throttle_indicator.setEnabled(False)
+		self.jfrc_model.throttle_updated.connect(lambda val: self.throttle_indicator.setValue(val))
+
 		# Set the layout of the main window
 		main_layout = QGridLayout()
 		main_layout.addWidget(connect_button, 0, 0)
 		main_layout.addWidget(self.current_url, 0, 1)
 		main_layout.addWidget(self.camera, 1, 0, 1, 2)
 		main_layout.addWidget(self.steering_indicator, 2, 0, 1, 2)
+		main_layout.addWidget(self.throttle_indicator, 1, 2, 2, 1)
 		self.setLayout(main_layout)
 		self.show()
 
 	def show_camera(self, url=""):
-		self.camera.load(QUrl(f"http://{url}:8080"))
+		self.camera.load(QUrl(f"http://{url}:{CAMERA_PORT}"))
 
 	def keyPressEvent(self, event):
 		if event.isAutoRepeat() or not self.is_connected:
@@ -78,6 +89,8 @@ class JFRCController(QWidget):
 			keymap["turn_left"]: self.jfrc_model.left,
 			keymap["turn_right"]: self.jfrc_model.right,
 			keymap["turn_center"]: self.jfrc_model.center,
+			keymap["forward"]: self.jfrc_model.forward,
+			keymap["reverse"]: self.jfrc_model.reverse,
 		}
 
 		if event.key() in key_press:
@@ -91,6 +104,8 @@ class JFRCController(QWidget):
 			keymap["turn_left"]: self.jfrc_model.left_stop,
 			keymap["turn_right"]: self.jfrc_model.right_stop,
 			keymap["turn_center"]: self.jfrc_model.center_stop,
+			keymap["forward"]: self.jfrc_model.neutral,
+			keymap["reverse"]: self.jfrc_model.neutral,
 		}
 
 		if event.key() in key_release:

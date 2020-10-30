@@ -30,12 +30,19 @@ class JFRCModel(QObject):
 			return self.val
 
 	steering_updated = Signal(int)
+	throttle_updated = Signal(int)
 
 	pwms = {
 		"steering": {
 			"value": BoundedInteger(127, 0, 255),
 			"gain": BoundedInteger(5),
 			"center_gain": BoundedInteger(5),
+		},
+		"throttle": {
+			"value": BoundedInteger(127, 0, 255),
+			"forward": BoundedInteger(255),
+			"neutral": BoundedInteger(127),
+			"reverse": BoundedInteger(0),
 		}
 	}
 
@@ -43,6 +50,9 @@ class JFRCModel(QObject):
 		"steering": BoundedInteger(0),
 		"center": False,
 	}
+
+	def throttle_value(self):
+		return self.pwms["throttle"]["value"].val
 
 	def steering_value(self):
 		return self.pwms["steering"]["value"].val
@@ -80,3 +90,15 @@ class JFRCModel(QObject):
 			gain = self.pwms["steering"]["center_gain"]
 			self.pwms["steering"]["value"] += \
 				gain if self.pwms["steering"]["value"].val < 127 else self.BoundedInteger(-1 * gain.val)
+
+	def forward(self):
+		self.pwms["throttle"]["value"] = self.pwms["throttle"]["forward"]
+		self.throttle_updated.emit(self.throttle_value())
+
+	def neutral(self):
+		self.pwms["throttle"]["value"] = self.pwms["throttle"]["neutral"]
+		self.throttle_updated.emit(self.throttle_value())
+
+	def reverse(self):
+		self.pwms["throttle"]["value"] = self.pwms["throttle"]["reverse"]
+		self.throttle_updated.emit(self.throttle_value())
