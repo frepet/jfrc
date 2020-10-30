@@ -1,4 +1,7 @@
-class JFRCModel:
+from PySide2.QtCore import QObject, Signal
+
+
+class JFRCModel(QObject):
 	class BoundedInteger:
 		def __init__(self, val=127, lower=-255, upper=255):
 			self.val = val
@@ -25,6 +28,8 @@ class JFRCModel:
 
 		def __int__(self):
 			return self.val
+
+	steering_updated = Signal(int)
 
 	pwms = {
 		"steering": {
@@ -65,6 +70,8 @@ class JFRCModel:
 			self._turn_towards_center()
 		else:
 			self.pwms["steering"]["value"] += self.active["steering"]
+
+		self.steering_updated.emit(self.steering_value())
 
 	def _turn_towards_center(self):
 		if self.pwms["steering"]["value"].val in range(123, 133):
