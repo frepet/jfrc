@@ -25,8 +25,8 @@ from ws4py.server.wsgiutils import WebSocketWSGIApplication
 WIDTH = 640
 HEIGHT = 480
 FRAMERATE = 20
-HTTP_PORT = 8080
-WS_PORT = 9084
+HTTP_PORT = 65521
+WS_PORT = 65522 
 COLOR = u'#444'
 BGCOLOR = u'#333'
 JSMPEG_MAGIC = b'jsmp'

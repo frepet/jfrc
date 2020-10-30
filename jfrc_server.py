@@ -4,7 +4,7 @@ import json
 from time import sleep
 import serial
 
-HTTP_PORT = 8081
+HTTP_PORT = 65520
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 9600
 SERIAL_HZ = 50
@@ -62,7 +62,6 @@ class JFRCServer(BaseHTTPRequestHandler):
 			if bad_request == False:
 				for key, value in post_json.items():
 					state["toggles"][key] = value
-					print("toggles, " + key + ":" + str(value))
 
 			if bad_request is True:
 				self.send_response(400)
@@ -101,7 +100,6 @@ class JFRCServer(BaseHTTPRequestHandler):
 			if bad_request == False:
 				for key, value in post_json.items():
 					state["pwms"][key] = value
-					print("pwm, " + key + ":" + str(value))
 
 			if bad_request is True:
 				self.send_response(400)
@@ -114,7 +112,7 @@ class JFRCServer(BaseHTTPRequestHandler):
 				self.wfile.write(json.dumps(state['pwms']).encode())
 
 
-def run(server_class=HTTPServer, handler_class=JFRCServer, port=8081):
+def run(server_class=HTTPServer, handler_class=JFRCServer, port=HTTP_PORT):
 	server_address = ('', port)
 	httpd = server_class(server_address, handler_class)
 	try:
