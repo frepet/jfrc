@@ -68,13 +68,20 @@ class JFRCController(QWidget):
 		self.throttle_indicator.setEnabled(False)
 		self.jfrc_model.throttle_updated.connect(lambda val: self.throttle_indicator.setValue(val))
 
+		# Add slider for zoom-level of camera
+		self.camera_zoom = QSlider(orientation=Qt.Horizontal)
+		self.camera_zoom.setRange(25, 500)
+		self.camera_zoom.show()
+		self.camera_zoom.valueChanged.connect(lambda val: self.camera.setZoomFactor(val/100))
+
 		# Set the layout of the main window
 		main_layout = QGridLayout()
 		main_layout.addWidget(connect_button, 0, 0)
 		main_layout.addWidget(self.current_url, 0, 1)
-		main_layout.addWidget(self.camera, 1, 0, 1, 2)
-		main_layout.addWidget(self.steering_indicator, 2, 0, 1, 2)
-		main_layout.addWidget(self.throttle_indicator, 1, 2, 2, 1)
+		main_layout.addWidget(self.camera_zoom, 1, 0, 1, 2)
+		main_layout.addWidget(self.camera, 2, 0, 1, 2)
+		main_layout.addWidget(self.steering_indicator, 3, 0, 1, 2)
+		main_layout.addWidget(self.throttle_indicator, 2, 2)
 		self.setLayout(main_layout)
 		self.show()
 
