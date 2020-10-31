@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
-from time import sleep
+from time import sleep, time
 import serial
 
 HTTP_PORT = 65520
 SERIAL_PORT = "/dev/ttyACM0"
 SERIAL_BAUD = 9600
 SERIAL_HZ = 50
+
+FAILSAFE_TIMEOUT = 0.2 # Seconds
+failsafe_last = time()
 
 state = {
 	"toggles" : {
@@ -60,6 +63,7 @@ class JFRCServer(BaseHTTPRequestHandler):
 
 			# Update all the values if request is good
 			if bad_request == False:
+				failsafe_ping()
 				for key, value in post_json.items():
 					state["toggles"][key] = value
 
@@ -98,6 +102,7 @@ class JFRCServer(BaseHTTPRequestHandler):
 
 			# Update all the values if request is good
 			if bad_request == False:
+				failsafe_ping()
 				for key, value in post_json.items():
 					state["pwms"][key] = value
 
@@ -111,6 +116,13 @@ class JFRCServer(BaseHTTPRequestHandler):
 				self.end_headers()
 				self.wfile.write(json.dumps(state['pwms']).encode())
 
+def failsafe_ping():
+	global failsafe_last
+	failsafe_last = time()
+
+def failsafe_time():
+	global failsafe_last
+	return time() - failsafe_last
 
 def run(server_class=HTTPServer, handler_class=JFRCServer, port=HTTP_PORT):
 	server_address = ('', port)
@@ -125,6 +137,7 @@ def run(server_class=HTTPServer, handler_class=JFRCServer, port=HTTP_PORT):
 class SerialCommunicator:
 	STX = 2
 	ETX = 3
+
 	def __init__(self, port, baud, state):
 		self.serial = serial.Serial(port, baud, timeout=0)
 		self.arduino_thread = Thread(target = self.loop)
@@ -136,6 +149,9 @@ class SerialCommunicator:
 
 	def loop(self):
 		while(self.running):
+			# Use Toggle A as a Failsafe indicator
+			state["toggles"]["A"] = failsafe_time() > FAILSAFE_TIMEOUT
+
 			for key, val in state["pwms"].items():
 				self.serial.write(b"%c%c%c%c" % (self.STX, ord(key), int(val), self.ETX))
 			for key, val in state["toggles"].items():
