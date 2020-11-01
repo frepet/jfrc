@@ -21,7 +21,7 @@ const int SERVO_START_PIN = 2; //This will correspond to the address 'a'
 const int SERVOS = 2;
 const int SERVO_MIN_MS = 1000;
 const int SERVO_MAX_MS = 2000;
-const int SERIAL_BAUD_RATE = 115200;
+const int SERIAL_BAUD_RATE = 9600;
 
 const int TOGGLES = 5;
 const int TOGGLES_START_PIN = 9;
