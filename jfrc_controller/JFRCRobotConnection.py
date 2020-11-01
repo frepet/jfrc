@@ -12,7 +12,7 @@ class JFRCRobotConnection:
 	"""
 
 	def __init__(self, model: JFRCModel):
-		self.url = f"http://{model.url}:{model.SERVER_PORT}"
+		self.url = f"http://{model.url}:{model.get_robot_port()}"
 
 		try:
 			requests.get(self.url + "/jfrc-test")
