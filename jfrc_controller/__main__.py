@@ -4,7 +4,6 @@ Python program to control a JF-RC Robot using a gamepad.
 Author: Fredrik Peteri, fredrik@peteri.se
 """
 import threading
-
 from PySide2.QtCore import Slot, Qt, QUrl
 from PySide2.QtWidgets import *
 from PySide2.QtWebEngineWidgets import QWebEngineView
@@ -13,21 +12,15 @@ from sys import argv
 from JFRCModel import JFRCModel
 from JFRCRobotConnection import JFRCRobotConnection
 
-CAMERA_PORT = 65521
-camera_size = (800, 600)
-keymap = {
-	"turn_left": Qt.Key_A,
-	"turn_right": Qt.Key_D,
-	"turn_center": Qt.Key_C,
-	"forward": Qt.Key_W,
-	"reverse": Qt.Key_S,
-}
-
 
 class JFRCController(QWidget):
+	"""
+	A controller for the JF-RC application, uses PySide2 as the view and a JFRCModel as the model.
+	"""
+
 	jfrc_robot_connection = None
 	is_connected = False
-	jfrc_model = JFRCModel()
+	model = JFRCModel()
 
 	def __init__(self):
 		super().__init__()
@@ -42,37 +35,31 @@ class JFRCController(QWidget):
 		# Add the 'Connect' button
 		connect_button = QPushButton(parent=self, text="Connect")
 		connect_button.released.connect(self.connect_dialog)
-		connect_button.show()
 
 		# Add the Current URL label
 		self.current_url = QLabel(parent=self, text="")
-		self.current_url.show()
 
 		# Add camera view
 		self.camera = QWebEngineView()
-		self.camera.width = camera_size[0]
-		self.camera.height = camera_size[1]
-		self.camera.show()
+		self.camera.width = self.model.camera_size[0]
+		self.camera.height = self.model.camera_size[1]
 
 		# Add slider for the steering
 		self.steering_indicator = QSlider(orientation=Qt.Horizontal)
-		self.steering_indicator.setRange(0, 255)
-		self.steering_indicator.show()
+		self.steering_indicator.setRange(0, 100)
 		self.steering_indicator.setEnabled(False)
-		self.jfrc_model.steering_updated.connect(lambda val: self.steering_indicator.setValue(val))
+		self.model.steering_updated.connect(lambda val: self.steering_indicator.setValue(val * 100))
 
 		# Add slider for throttle
 		self.throttle_indicator = QSlider(orientation=Qt.Vertical)
-		self.throttle_indicator.setRange(0, 255)
-		self.throttle_indicator.show()
+		self.throttle_indicator.setRange(0, 100)
 		self.throttle_indicator.setEnabled(False)
-		self.jfrc_model.throttle_updated.connect(lambda val: self.throttle_indicator.setValue(val))
+		self.model.throttle_updated.connect(lambda val: self.throttle_indicator.setValue(val * 100))
 
 		# Add slider for zoom-level of camera
 		self.camera_zoom = QSlider(orientation=Qt.Horizontal)
 		self.camera_zoom.setRange(25, 500)
-		self.camera_zoom.show()
-		self.camera_zoom.valueChanged.connect(lambda val: self.camera.setZoomFactor(val/100))
+		self.camera_zoom.valueChanged.connect(lambda val: self.camera.setZoomFactor(val / 100))
 
 		# Set the layout of the main window
 		main_layout = QGridLayout()
@@ -83,21 +70,23 @@ class JFRCController(QWidget):
 		main_layout.addWidget(self.steering_indicator, 3, 0, 1, 2)
 		main_layout.addWidget(self.throttle_indicator, 2, 2)
 		self.setLayout(main_layout)
+
+		# Show all the components
 		self.show()
 
 	def show_camera(self, url=""):
-		self.camera.load(QUrl(f"http://{url}:{CAMERA_PORT}"))
+		self.camera.load(QUrl(f"http://{url}:{self.model.CAMERA_PORT}"))
 
 	def keyPressEvent(self, event):
 		if event.isAutoRepeat() or not self.is_connected:
 			return
 
 		key_press = {
-			keymap["turn_left"]: self.jfrc_model.left,
-			keymap["turn_right"]: self.jfrc_model.right,
-			keymap["turn_center"]: self.jfrc_model.center,
-			keymap["forward"]: self.jfrc_model.forward,
-			keymap["reverse"]: self.jfrc_model.reverse,
+			self.model.keymap["turn_left"]: self.model.left,
+			self.model.keymap["turn_right"]: self.model.right,
+			self.model.keymap["turn_center"]: self.model.center,
+			self.model.keymap["forward"]: self.model.forward,
+			self.model.keymap["reverse"]: self.model.reverse,
 		}
 
 		if event.key() in key_press:
@@ -108,11 +97,11 @@ class JFRCController(QWidget):
 			return
 
 		key_release = {
-			keymap["turn_left"]: self.jfrc_model.left_stop,
-			keymap["turn_right"]: self.jfrc_model.right_stop,
-			keymap["turn_center"]: self.jfrc_model.center_stop,
-			keymap["forward"]: self.jfrc_model.neutral,
-			keymap["reverse"]: self.jfrc_model.neutral,
+			self.model.keymap["turn_left"]: self.model.left_stop,
+			self.model.keymap["turn_right"]: self.model.right_stop,
+			self.model.keymap["turn_center"]: self.model.center_stop,
+			self.model.keymap["forward"]: self.model.neutral,
+			self.model.keymap["reverse"]: self.model.neutral,
 		}
 
 		if event.key() in key_release:
@@ -134,7 +123,8 @@ class JFRCController(QWidget):
 		text, ok = QInputDialog().getText(self, "Connect", "URL", QLineEdit.Normal)
 		if ok and text:
 			try:
-				self.jfrc_robot_connection = JFRCRobotConnection(model=self.jfrc_model, url=text)
+				self.model.url = text
+				self.jfrc_robot_connection = JFRCRobotConnection(model=self.model)
 				self.current_url.setText(f"Connected to: {text}")
 				self.is_connected = True
 				self.show_camera(text)

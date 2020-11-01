@@ -1,20 +1,18 @@
-"""
-Class used to send requests to the JF-RC Robot
-
-Author: Fredrik Peteri, fredrik@peteri.se
-"""
 from time import sleep
-
 import requests
 
 from JFRCModel import JFRCModel
 
-SERVER_PORT = 65520
-
 
 class JFRCRobotConnection:
-	def __init__(self, model: JFRCModel, url="", port=SERVER_PORT):
-		self.url = f"http://{url}:{port}"
+	"""
+	Connects the JFRCModel to a JF-RC Robot using the JF-RC API
+
+	Author: Fredrik Peteri, fredrik@peteri.se
+	"""
+
+	def __init__(self, model: JFRCModel):
+		self.url = f"http://{model.url}:{model.SERVER_PORT}"
 
 		try:
 			requests.get(self.url + "/jfrc-test")
@@ -28,16 +26,10 @@ class JFRCRobotConnection:
 		while self.running:
 			self.model.tick()
 			requests.post(self.url + "/jfrc-pwms", json={
-				'a': self.model.steering_value(),
-				'b': self.model.throttle_value(),
+				'a': int(self.model.steering_value() * 255),
+				'b': int(self.model.throttle_value() * 255),
 			})
 			sleep(0.02)
 
 	def stop(self):
 		self.running = False
-
-	def steering(self, pos):
-		if type(pos) != int or pos not in range(256):
-			raise ValueError(f"Steering value has to be an integer in range 0-255")
-
-		requests.post(self.url + "/jfrc-pwms", json={'a': int(pos)})

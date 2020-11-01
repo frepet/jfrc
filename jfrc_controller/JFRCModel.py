@@ -1,104 +1,78 @@
-from PySide2.QtCore import QObject, Signal
+from PySide2.QtCore import QObject, Signal, Qt
+
+from Servo import Servo
 
 
 class JFRCModel(QObject):
-	class BoundedInteger:
-		def __init__(self, val=127, lower=-255, upper=255):
-			self.val = val
-			self.lower = lower
-			self.upper = upper
+	"""
+	Model for a JFRC Robot, stores servos and settings for the whole robot.
+	Has two signals are available, steering_updated and throttle_updated.
 
-		def __set__(self, instance, value):
-			self.val = max(self.lower, min(self.val, self.upper))
+	tick() should be called frequently to update the servos.
 
-		def __get__(self, instance, owner):
-			return self.val
-
-		def __sub__(self, other):
-			self.val = max(self.lower, min(self.val - other.val, self.upper))
-			return self
-
-		def __add__(self, other):
-			self.val = max(self.lower, min(self.val + other.val, self.upper))
-			return self
-
-		def __mul__(self, other):
-			self.val = max(self.lower, min(self.val * other.val, self.upper))
-			return self
-
-		def __int__(self):
-			return self.val
-
-	steering_updated = Signal(int)
-	throttle_updated = Signal(int)
-
-	pwms = {
-		"steering": {
-			"value": BoundedInteger(127, 0, 255),
-			"gain": BoundedInteger(5),
-			"center_gain": BoundedInteger(5),
-		},
-		"throttle": {
-			"value": BoundedInteger(127, 0, 255),
-			"forward": BoundedInteger(255),
-			"neutral": BoundedInteger(127),
-			"reverse": BoundedInteger(0),
-		}
+	Author: Fredrik Peteri, fredrik@peteri.se
+	"""
+	servos = {
+		"steering": Servo(mapping=Servo.linear_mapping(0.65, 0.3), gain=0.05, center=0.5),
+		"throttle": Servo(mapping=Servo.linear_mapping(0.33, 0.66)),
 	}
 
-	active = {
-		"steering": BoundedInteger(0),
-		"center": False,
+	url = "localhost"
+	SERVER_PORT = 65520
+	CAMERA_PORT = 65521
+	camera_size = (800, 600)
+	keymap = {
+		"turn_left": Qt.Key_A,
+		"turn_right": Qt.Key_D,
+		"turn_center": Qt.Key_C,
+		"forward": Qt.Key_W,
+		"reverse": Qt.Key_S,
 	}
+
+	# Signals the steering value from 0.0-1.0
+	steering_updated = Signal(float)
+
+	# Signals the throttle value from 0.0-1.0
+	throttle_updated = Signal(float)
 
 	def throttle_value(self):
-		return self.pwms["throttle"]["value"].val
+		return self.servos["throttle"].get()
 
 	def steering_value(self):
-		return self.pwms["steering"]["value"].val
+		return self.servos["steering"].get()
 
 	def left(self):
-		self.active["steering"] -= self.pwms["steering"]["gain"]
+		self.servos["steering"].move_low = True
 
 	def left_stop(self):
-		self.active["steering"] += self.pwms["steering"]["gain"]
+		self.servos["steering"].move_low = False
 
 	def right(self):
-		self.active["steering"] += self.pwms["steering"]["gain"]
+		self.servos["steering"].move_high = True
 
 	def right_stop(self):
-		self.active["steering"] -= self.pwms["steering"]["gain"]
+		self.servos["steering"].move_high = False
 
 	def center(self):
-		self.active["center"] = True
+		self.servos["steering"].move_center = True
 
 	def center_stop(self):
-		self.active["center"] = False
-
-	def tick(self):
-		if self.active["center"]:
-			self._turn_towards_center()
-		else:
-			self.pwms["steering"]["value"] += self.active["steering"]
-
-		self.steering_updated.emit(self.steering_value())
-
-	def _turn_towards_center(self):
-		if self.pwms["steering"]["value"].val in range(123, 133):
-			self.pwms["steering"]["value"].val = 127
-		else:
-			gain = self.pwms["steering"]["center_gain"]
-			self.pwms["steering"]["value"] += \
-				gain if self.pwms["steering"]["value"].val < 127 else self.BoundedInteger(-1 * gain.val)
+		self.servos["steering"].move_center = False
 
 	def forward(self):
-		self.pwms["throttle"]["value"] = self.pwms["throttle"]["forward"]
-		self.throttle_updated.emit(self.throttle_value())
+		self.servos["throttle"].set_high()
+		self.throttle_updated.emit(self.servos["throttle"].value)
 
 	def neutral(self):
-		self.pwms["throttle"]["value"] = self.pwms["throttle"]["neutral"]
-		self.throttle_updated.emit(self.throttle_value())
+		self.servos["throttle"].set_center()
+		self.throttle_updated.emit(self.servos["throttle"].value)
 
 	def reverse(self):
-		self.pwms["throttle"]["value"] = self.pwms["throttle"]["reverse"]
-		self.throttle_updated.emit(self.throttle_value())
+		self.servos["throttle"].set_low()
+		self.throttle_updated.emit(self.servos["throttle"].value)
+
+	def tick(self):
+		for servo in self.servos.values():
+			servo.tick()
+
+		self.steering_updated.emit(self.servos["steering"].value)
