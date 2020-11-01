@@ -1,4 +1,6 @@
-from PySide2.QtCore import QObject, Signal, Qt
+import json
+
+from PySide2.QtCore import QObject, Signal
 
 from Servo import Servo
 
@@ -12,21 +14,43 @@ class JFRCModel(QObject):
 
 	Author: Fredrik Peteri, fredrik@peteri.se
 	"""
-	servos = {
-		"steering": Servo(mapping=Servo.linear_mapping(0.65, 0.3), gain=0.05, center=0.5),
-		"throttle": Servo(mapping=Servo.linear_mapping(0.33, 0.66)),
+
+	# Some default settings
+	robot_settings = {
+		"name": "Defaults",
+		"servos": {
+			"a": {
+				"mapping": {
+					"function": "linear",
+					"params": [0.0, 1.0],
+				},
+				"gain": 0.05,
+			},
+			"b": {
+				"mapping": {
+					"function": "linear",
+					"params": [0.0, 1.0],
+				},
+			},
+		},
+		"keymap": {
+			"turn_left": "A",
+			"turn_right": "D",
+			"turn_center": "C",
+			"forward": "W",
+			"reverse": "S",
+		},
+		"url": "localhost",
+		"robot_port": 65520,
+		"camera_port": 65521,
+		"camera_size": (800, 600)
 	}
 
-	url = "localhost"
-	SERVER_PORT = 65520
-	CAMERA_PORT = 65521
-	camera_size = (800, 600)
-	keymap = {
-		"turn_left": Qt.Key_A,
-		"turn_right": Qt.Key_D,
-		"turn_center": Qt.Key_C,
-		"forward": Qt.Key_W,
-		"reverse": Qt.Key_S,
+	# TODO User loads a file, servos are filled with the correct servos. Change "steering" and "throttle" to "a" and "b".
+
+	servos = {
+		"steering": Servo(mapping=Servo.linear_mapping(0.65, 0.3), gain=0.05),
+		"throttle": Servo(mapping=Servo.linear_mapping(0.33, 0.66)),
 	}
 
 	# Signals the steering value from 0.0-1.0
@@ -70,6 +94,25 @@ class JFRCModel(QObject):
 	def reverse(self):
 		self.servos["throttle"].set_low()
 		self.throttle_updated.emit(self.servos["throttle"].value)
+
+	def save(self, filename):
+		with open(filename, "w") as f:
+			f.write(json.dumps(self.robot_settings, indent=4))
+
+	def load(self, filename):
+		print("Before load:" + str(self.robot_settings))
+		with open(filename, "r") as f:
+			self.robot_settings = json.loads(f.read())
+		print("After load:" + str(self.robot_settings))
+
+	def get_camera_port(self):
+		return self.robot_settings["camera_port"]
+
+	def get_robot_port(self):
+		return self.robot_settings["robot_port"]
+
+	def get_camera_size(self):
+		return self.robot_settings["camera_size"]
 
 	def tick(self):
 		for servo in self.servos.values():

@@ -12,6 +12,14 @@ from sys import argv
 from JFRCModel import JFRCModel
 from JFRCRobotConnection import JFRCRobotConnection
 
+KEYS = {
+	"A": Qt.Key_A,
+	"D": Qt.Key_D,
+	"C": Qt.Key_C,
+	"W": Qt.Key_W,
+	"S": Qt.Key_S,
+}
+
 
 class JFRCController(QWidget):
 	"""
@@ -39,10 +47,16 @@ class JFRCController(QWidget):
 		# Add the Current URL label
 		self.current_url = QLabel(parent=self, text="")
 
+		# Add the Load and Save button
+		# TODO Get filename from user
+		load_button = QPushButton(parent=self, text="Load")
+		load_button.released.connect(lambda: self.model.load("save0"))
+		save_button = QPushButton(parent=self, text="Save")
+		save_button.released.connect(lambda: self.model.save("save0"))
+
 		# Add camera view
 		self.camera = QWebEngineView()
-		self.camera.width = self.model.camera_size[0]
-		self.camera.height = self.model.camera_size[1]
+		self.camera.width, self.camera.height = self.model.get_camera_size()
 
 		# Add slider for the steering
 		self.steering_indicator = QSlider(orientation=Qt.Horizontal)
@@ -67,26 +81,28 @@ class JFRCController(QWidget):
 		main_layout.addWidget(self.current_url, 0, 1)
 		main_layout.addWidget(self.camera_zoom, 1, 0, 1, 2)
 		main_layout.addWidget(self.camera, 2, 0, 1, 2)
-		main_layout.addWidget(self.steering_indicator, 3, 0, 1, 2)
 		main_layout.addWidget(self.throttle_indicator, 2, 2)
+		main_layout.addWidget(self.steering_indicator, 3, 0, 1, 2)
+		main_layout.addWidget(load_button, 4, 0)
+		main_layout.addWidget(save_button, 5, 0)
 		self.setLayout(main_layout)
 
 		# Show all the components
 		self.show()
 
 	def show_camera(self, url=""):
-		self.camera.load(QUrl(f"http://{url}:{self.model.CAMERA_PORT}"))
+		self.camera.load(QUrl(f"http://{url}:{self.model.get_camera_port()}"))
 
 	def keyPressEvent(self, event):
 		if event.isAutoRepeat() or not self.is_connected:
 			return
 
 		key_press = {
-			self.model.keymap["turn_left"]: self.model.left,
-			self.model.keymap["turn_right"]: self.model.right,
-			self.model.keymap["turn_center"]: self.model.center,
-			self.model.keymap["forward"]: self.model.forward,
-			self.model.keymap["reverse"]: self.model.reverse,
+			KEYS[self.model.keymap["turn_left"]]: self.model.left,
+			KEYS[self.model.keymap["turn_right"]]: self.model.right,
+			KEYS[self.model.keymap["turn_center"]]: self.model.center,
+			KEYS[self.model.keymap["forward"]]: self.model.forward,
+			KEYS[self.model.keymap["reverse"]]: self.model.reverse,
 		}
 
 		if event.key() in key_press:
