@@ -1,0 +1,15 @@
+Fr Re Le Ri | Ld Ls Rd Rs
+ 0  0  0  0 |  0  0  0  0 # Stop
+ 1  0  0  0 |  1  0  1  0 # Forward
+ 0  1  0  0 |  0  1  0  1 # Reverse
+ 0  0  1  0 |  0  1  1  0 # Left Pivot
+ 0  0  0  1 |  1  0  0  1 # Right Pivot
+ 1  0  1  0 |  1  1  1  0 # Left Turn
+ 1  0  0  1 |  1  0  1  1 # Right Turn
+ 0  1  1  0 |  0  0  0  1 # Left Reverse Turn
+ 0  1  0  1 |  0  1  0  0 # Right Reverse Turn
+
+Ld = Fr or (Ri and not Re)
+Ls = Re xor Le
+Rd = Fr or (Le and not Re)
+Rs = Re xor Ri

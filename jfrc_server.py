@@ -4,6 +4,7 @@ import json
 from time import sleep, time
 from sys import argv
 from threading import Thread
+import RPi.GPIO as GPIO
 
 
 HTTP_PORT = 65520
@@ -17,10 +18,50 @@ state = {
     },
     "pwms" : {
         0: 0,
+        1: 0,
     },
 }
 
+class HBridgeController:
+    def __init__(self, dir_a: int, dir_b: int, speed_a: int, speed_b: int):
+        GPIO.setmode(GPIO.BOARD)
+        self.dir_a = dir_a
+        self.dir_b = dir_b
+        self.speed_a = speed_a
+        self.speed_b = speed_b
+
+        GPIO.setup(self.dir_a, GPIO.OUT)
+        GPIO.setup(self.dir_b, GPIO.OUT)
+        GPIO.setup(self.speed_a, GPIO.OUT)
+        GPIO.setup(self.speed_b, GPIO.OUT)
+
+        GPIO.output(self.dir_a, False)
+        GPIO.output(self.dir_b, False)
+        GPIO.output(self.speed_a, False)
+        GPIO.output(self.speed_b, False)
+
+    def update(self, steering: int, throttle: int):
+        forward = throttle > 1500
+        reverse = throttle < 1500
+        left = steering < 1500
+        right = steering > 1500
+        
+        GPIO.output(self.dir_a, forward or (right and not reverse))
+        GPIO.output(self.dir_b, forward or (left and not reverse))
+        GPIO.output(self.speed_a, reverse ^ left)
+        GPIO.output(self.speed_b, reverse ^ right)
+
+    def teardown(self):
+        GPIO.output(self.dir_a, False)
+        GPIO.output(self.dir_b, False)
+        GPIO.output(self.speed_a, False)
+        GPIO.output(self.speed_b, False)
+        GPIO.cleanup()
+
+
 class JFRCRestServer(BaseHTTPRequestHandler):
+    h_bridge_controller = HBridgeController(dir_a=35, speed_a=36, dir_b=37, speed_b=38)
+
     def do_GET(self):
         if self.path == "/jfrc-test":
             self.send_response(200)
@@ -105,6 +146,10 @@ class JFRCRestServer(BaseHTTPRequestHandler):
                         self.set_pwm(int(key), int(value), sb)
                         state["pwms"][int(key)] = int(value)
 
+                # Update H-Bridge
+                if '0' in post_json and '1' in post_json:
+                    self.h_bridge_controller.update(steering=post_json['0'], throttle=post_json['1'])
+
             if bad_request is True:
                 self.send_response(400)
                 self.send_header("Content-type", "text/plain")
@@ -158,6 +203,7 @@ class JFRCServer:
         httpd.server_close()
 
         failsafe.stop()
+        GPIO.cleanup()
 
 
 if __name__ == '__main__':
