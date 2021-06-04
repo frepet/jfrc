@@ -26,8 +26,8 @@ class JFRCRobotConnection:
 		while self.running:
 			self.model.tick()
 			requests.post(self.url + "/jfrc-pwms", json={
-				'a': int(self.model.steering_value() * 255),
-				'b': int(self.model.throttle_value() * 255),
+				0: int(1000 + self.model.steering_value() * 1000),
+				1: int(1000 + self.model.throttle_value() * 1000),
 			})
 			sleep(0.02)
 
