@@ -11,14 +11,7 @@ from sys import argv
 
 from JFRCModel import JFRCModel
 from JFRCRobotConnection import JFRCRobotConnection
-
-KEYS = {
-	"A": Qt.Key_A,
-	"D": Qt.Key_D,
-	"C": Qt.Key_C,
-	"W": Qt.Key_W,
-	"S": Qt.Key_S,
-}
+from keys import KEYS
 
 
 class JFRCController(QWidget):
@@ -48,11 +41,10 @@ class JFRCController(QWidget):
 		self.current_url = QLabel(parent=self, text="")
 
 		# Add the Load and Save button
-		# TODO Get filename from user
 		load_button = QPushButton(parent=self, text="Load")
-		load_button.released.connect(lambda: self.model.load("save0"))
+		load_button.released.connect(lambda: self.model.load(QFileDialog.getOpenFileName(self, "Load Settings")[0]))
 		save_button = QPushButton(parent=self, text="Save")
-		save_button.released.connect(lambda: self.model.save("save0"))
+		save_button.released.connect(lambda: self.model.save(QFileDialog.getSaveFileName(self, "Save Settings")[0]))
 
 		# Add camera view
 		self.camera = QWebEngineView()
@@ -98,11 +90,11 @@ class JFRCController(QWidget):
 			return
 
 		key_press = {
-			KEYS[self.model.keymap["turn_left"]]: self.model.left,
-			KEYS[self.model.keymap["turn_right"]]: self.model.right,
-			KEYS[self.model.keymap["turn_center"]]: self.model.center,
-			KEYS[self.model.keymap["forward"]]: self.model.forward,
-			KEYS[self.model.keymap["reverse"]]: self.model.reverse,
+			KEYS[self.model.get_keymap()["turn_left"]]: self.model.left,
+			KEYS[self.model.get_keymap()["turn_right"]]: self.model.right,
+			KEYS[self.model.get_keymap()["turn_center"]]: self.model.move_center,
+			KEYS[self.model.get_keymap()["forward"]]: self.model.forward,
+			KEYS[self.model.get_keymap()["reverse"]]: self.model.reverse,
 		}
 
 		if event.key() in key_press:
@@ -113,11 +105,11 @@ class JFRCController(QWidget):
 			return
 
 		key_release = {
-			self.model.keymap["turn_left"]: self.model.left_stop,
-			self.model.keymap["turn_right"]: self.model.right_stop,
-			self.model.keymap["turn_center"]: self.model.center_stop,
-			self.model.keymap["forward"]: self.model.neutral,
-			self.model.keymap["reverse"]: self.model.neutral,
+			KEYS[self.model.get_keymap()["turn_left"]]: self.model.center,
+			KEYS[self.model.get_keymap()["turn_right"]]: self.model.center,
+			KEYS[self.model.get_keymap()["turn_center"]]: self.model.center_stop,
+			KEYS[self.model.get_keymap()["forward"]]: self.model.neutral,
+			KEYS[self.model.get_keymap()["reverse"]]: self.model.neutral,
 		}
 
 		if event.key() in key_release:
@@ -128,8 +120,9 @@ class JFRCController(QWidget):
 		self.update_thread.start()
 
 	def stop_updates(self):
-		self.jfrc_robot_connection.stop()
-		self.update_thread.join()
+		if self.is_connected:
+			self.jfrc_robot_connection.stop()
+			self.update_thread.join()
 
 	@Slot()
 	def connect_dialog(self):
